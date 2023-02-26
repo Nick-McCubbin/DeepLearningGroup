@@ -1,59 +1,55 @@
-import pandas as pd
-import numpy as np
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, OneHotEncoder
-
-
-data = pd.read_csv('pricing.csv')
-
-
-X = data.drop('quantity', axis=1)
-y = data['quantity']
-
-scaler = StandardScaler()
-X = scaler.fit_transform(X)
-
-
-encoder = OneHotEncoder()
-X = encoder.fit_transform(X).toarray()
-
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
 import tensorflow as tf
-
-
-model = tf.keras.Sequential()
-model.add(tf.keras.layers.Dense(64, activation='sigmoid', input_shape=(X_train.shape[1],)))
-model.add(tf.keras.layers.Dense(32, activation='sigmoid'))
-model.add(tf.keras.layers.Dense(16, activation='sigmoid'))
-model.add(tf.keras.layers.Dense(1))
-
-
-model.compile(optimizer='adam', loss='mean_squared_error')
-
-
-batch_size = 32
-
-for i in range(0, len(X_train), batch_size):
-    X_batch = X_train[i:i+batch_size]
-    y_batch = y_train[i:i+batch_size]
-    model.fit(X_batch, y_batch, epochs=1, verbose=0)
-
-
-
+import numpy as np
 import matplotlib.pyplot as plt
+import pandas as pd
+
+data = pd.read_csv("C:/Users/weste/Desktop/MSBA/Spring 2023/BZAN 554 - Deep Learning/pricing.csv")
+len(data)
+data.head()
+data.isna().sum() #nas present in last row of data
+data = data[:-1] #remove na's from dataset
+data.isna().sum() #na's removed
+
+len(data)
+data.head()
+
+X1 = data['sku']
+X2 = data['price']
+X3 = data['order']
+X4 = data['duration']
+X5 = data['category']
+X = np.array(np.column_stack((X1,X2,X3,X4,X5)))
+Y = data['quantity']
 
 
-mse_history = []
-for i in range(0, len(X_train), batch_size):
-    X_batch = X_train[i:i+batch_size]
-    y_batch = y_train[i:i+batch_size]
-    mse = model.evaluate(X_batch, y_batch, verbose=0)
-    mse_history.append(mse)
+#specify architecture
+inputs = tf.keras.layers.Input(shape=(X.shape[1],), name = 'input')
+hidden1 = tf.keras.layers.Dense(units = 5, activation = 'sigmoid', name = 'hidden1')(inputs)
+hidden2 = tf.keras.layers.Dense(units = 5, activation = 'sigmoid', name = 'hidden2')(hidden1)
+hidden3 = tf.keras.layers.Dense(units = 5, activation = 'sigmoid', name = 'hidden3')(hidden2)
+output = tf.keras.layers.Dense(units = 1, activation = 'linear', name = 'output')(hidden3)
 
-mse_ma = np.convolve(mse_history, np.ones(100)/100, mode='valid')
+model = tf.keras.Model(inputs = inputs, outputs = output)
+
+# model = tf.keras.models.Sequential([tf.keras.layers.Input(shape=(X.shape[1],), name = 'input'), tf.keras.layers.Dense(units = 5, activation = 'sigmoid', name = 'hidden1'), tf.keras.layers.Dense(units = 5, activation = 'sigmoid', name = 'hidden2'), tf.keras.layers.Dense(units = 5, activation = 'sigmoid', name = 'hidden3'), tf.keras.layers.Dense(units = 1, activation = 'linear', name = 'output')])
+
+model.compile(loss = 'mse', optimizer = tf.keras.optimizers.SGD(learning_rate = 0.001))
+
+history = model.fit(x = X, y = Y, batch_size = 5000, epochs = 10)
+
+# for i in data.iterrows():
+#     X1 = data['sku']
+#     X2 = data['price']
+#     X3 = data['order']
+#     X4 = data['duration']
+#     X5 = data['category']
+#     X = np.array(np.column_stack((X1,X2,X3,X4,X5)))
+#     Y = data['quantity']
+#     model = tf.keras.Model(inputs = inputs, outputs = output)
+#     model.compile(loss = 'mse', optimizer = tf.keras.optimizers.SGD(learning_rate = 0.001))
+#     history = model.fit(x= X, y = Y, batch_size = 100, epochs = 2)
 
 
-plt.plot(range(len(mse_ma)), mse_ma)
-plt.xlabel('Number of instances learned')
+plt.plot(history.history['loss'])
+plt.show()
+
